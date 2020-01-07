@@ -38,38 +38,64 @@ const url = require("url");
 ///////////////// HTTP
 // basic routing
 
+const replaceTemplate = (template, object) => {
+
+    let output = template.replace(/{%PRODUCTNAME%}/g, object.productName);
+    output = output.replace(/{%IMAGE%}/g, object.image);
+    output = output.replace(/{%PRICE%}/g, object.price);
+    output = output.replace(/{%FROM%}/g, object.from);
+    output = output.replace(/{%NUTRIENTS%}/g, object.nutrients);
+    output = output.replace(/{%QUANTITY%}/g, object.quantity);
+    output = output.replace(/{%DESCRIPTION%}/g, object.description);
+    output = output.replace(/{%ID%}/g, object.id);
+
+    if(!object.organic) output = output.replace(/{%NOT_ORGANIC%}/g, "not-organic");
+
+    return output;
+};
+
+// load all view once the application starts in memorey
+const tempOverview = fs.readFileSync(`${__dirname}/templates/template-overview.html`, 'utf-8');
+const tempCard = fs.readFileSync(`${__dirname}/templates/template-card.html`, 'utf-8');
+const tempProducts = fs.readFileSync(`${__dirname}/templates/template-product.html`, 'utf-8');
+
+
 const data = fs.readFileSync(`${__dirname}/dev-data/data.json`, 'utf-8');
-const dataObject = JSON.parse(data);
+const dataObject = JSON.parse(data); // array of objects
 
 const server = http.createServer((request, response) => {
     const pathName = request.url;
 
-
+    // overview page
     if(pathName === "/" || pathName === "/overview"){
-        response.end("This is the overview");
+        response.writeHead(200, {'Content-type': 'text/html'});
 
+
+        // replace placeholders in html
+        const cardsHtml = dataObject.map(object => {
+            return replaceTemplate(tempCard, object);
+        }).join('');
+
+        const output = tempOverview.replace('{%PRODUCT_CARDS%}', cardsHtml);
+
+        response.end(output);
+
+    // Product page
     } else if(pathName === "/product"){
         response.end("This is the product");
     } 
-     else if(pathName === "/api"){
+
+    // API page
+    else if(pathName === "/api"){
 
         response.writeHead(200, {
             'Content-type': 'application/json'
         });
         response.end(data);
 
-        // fs.readFile("./dev-data/data.json"); bad way
-        // fs.readFile(`${__dirname}/dev-data/data.json`, 'utf-8', (error, data) => {
-        //     const productData = JSON.parse(data);
-        //     // console.log(productData);
-        //     response.writeHead(200, {
-        //         'Content-type': 'application/json'
-        //     });
-        //     response.end(data);
 
-        // });
+    // Not found
     } else {
-        // response.writeHead(404); send 404 status error
         response.writeHead(404, {
             'Content-type': 'text/html',
             'my-own-header': 'hello header'
